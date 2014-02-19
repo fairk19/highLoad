@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+Last-Modified: 12:58:13
+Content-Length: 125
+Content-Type: text/html
+Connection: close
+WebServer: WEBServer
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+</head>
+<body>
+    <p><h1>Hello world!</h1></p>
+</body>
+</html>
