@@ -64,7 +64,7 @@ public class WebServer extends Thread{
 
                 response = response
                         + "Connection: close\n"
-                        + "WebServer: WEBServer\n";
+                        + "Server: WEBServer\n";
 
                 outputStream.write(response.getBytes());
                 socket.close();
@@ -72,9 +72,9 @@ public class WebServer extends Thread{
             }
 
             File file = new File(path);
-            boolean fileIsExist = !file.exists();
+            boolean fileIsExist = file.exists();
 
-            if(!fileIsExist)
+            if(fileIsExist)
                 if(file.isDirectory())
                 {
                     if(path.lastIndexOf("" + File.separator) == path.length()-1)
@@ -82,20 +82,24 @@ public class WebServer extends Thread{
                     else
                         path = path + File.separator + "index.html";
                     file = new File(path);
-                    fileIsExist = !file.exists();
+                    fileIsExist = file.exists();
                 }
 
-            if(fileIsExist)
+            if(!fileIsExist)
             {
-                String response = "HTTP/1.1 404 Not Found\n";
+                String response;
+                if(file.isDirectory())
+                    response = "HTTP/1.1 403 Forbidden\n";
+                else
+                    response = "HTTP/1.1 404 Not Found\n";
+
                 DateFormat dateFormat = DateFormat.getTimeInstance();
                 dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
                 response = response + "Date: " + dateFormat.format(new Date()) + "\n";
                 response = response
                         + "Content-Type: text/plain\n"
                         + "Connection: close\n"
-                        + "WebServer: WEBServer\n"
-                        + "Pragma: no-cache\n\n";
+                        + "Server: WEBServer\n";
 
                 response = response + "File " + path + " not found!";
                 outputStream.write(response.getBytes());
@@ -111,6 +115,8 @@ public class WebServer extends Thread{
                 String ext = path.substring(readBuf);
                 if(ext.equalsIgnoreCase(".html"))
                     mime = "text/html";
+                else if(ext.equalsIgnoreCase(".htm"))
+                    mime = "text/html";
                 else if(ext.equalsIgnoreCase(".js"))
                     mime = "text/javascript";
                 else if(ext.equalsIgnoreCase(".css"))
@@ -124,19 +130,20 @@ public class WebServer extends Thread{
                 else if(ext.equalsIgnoreCase(".png"))
                     mime = "image/png";
                 else if(ext.equalsIgnoreCase(".swf"))
-                    mime = "image/swf";
+                    mime = "application/x-shockwave-flash";
 
             }
 
             String response = "HTTP/1.1 200 OK\n";
             DateFormat dateFormat = DateFormat.getTimeInstance();
             dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+            response = response + "Date: " + dateFormat.format(new Date()) + "\n";
             response = response + "Last-Modified: " + dateFormat.format(new Date(file.lastModified())) + "\n";
             response = response + "Content-Length: " + file.length() + "\n";
             response = response + "Content-Type: " + mime + "\n";
             response = response
                     + "Connection: close\n"
-                    + "WebServer: WEBServer\n\n";
+                    + "Server: WEBServer\n\n";
             outputStream.write(response.getBytes());
 
             String isHead = extract(request, "HEAD ", " ");
