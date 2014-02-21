@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URLDecoder;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.TimeZone;
@@ -53,7 +54,7 @@ public class WebServer extends Thread{
             int readBuf = inputStream.read(buf);
             String request = new String(buf, 0, readBuf);
             String path = getPath(request);
-
+            System.out.println("PATH:" + path);
             if(path == null)
             {
                 String response = "HTTP/1.1 405 Method Not Allowed\n";
@@ -71,6 +72,7 @@ public class WebServer extends Thread{
                 return;
             }
 
+            path = URLDecoder.decode(path, "UTF-8");
             File file = new File(path);
             boolean fileIsExist = file.exists();
 
@@ -166,8 +168,8 @@ public class WebServer extends Thread{
 
     private String getPath(String header)
     {
-        String URIGet = extract(header, "GET ", " ");
-        String URIHead = extract(header, "HEAD ", " ");
+        String URIGet = extract(header, "GET ", " HTTP/1.1");
+        String URIHead = extract(header, "HEAD ", " HTTP/1.1");
         String path, URI;
         if(URIGet != null)
         {
@@ -193,12 +195,16 @@ public class WebServer extends Thread{
             URI = URI.substring(1);
 
         int i = URI.indexOf("?");
-        if(i > 0) URI = URI.substring(0, i);
+        if(i > 0)
+            URI = URI.substring(0, i);
+
         i = URI.indexOf("#");
-        if(i > 0) URI = URI.substring(0, i);
+        if(i > 0)
+            URI = URI.substring(0, i);
 
         path = "." + File.separator;
         char a;
+
         for(i = 0; i < URI.length(); i++)
         {
             a = URI.charAt(i);
@@ -213,12 +219,16 @@ public class WebServer extends Thread{
     private String extract(String str, String start, String end)
     {
         int resultStart = str.indexOf("\n\n", 0), resultEnd;
-        if(resultStart < 0) resultStart = str.indexOf("\r\n\r\n", 0);
-        if(resultStart > 0) str = str.substring(0, resultStart);
+        if(resultStart < 0)
+            resultStart = str.indexOf("\r\n\r\n", 0);
+        if(resultStart > 0)
+            str = str.substring(0, resultStart);
         resultStart = str.indexOf(start, 0) + start.length();
-        if(resultStart < start.length()) return null;
+        if(resultStart < start.length())
+            return null;
         resultEnd = str.indexOf(end, resultStart);
-        if(resultEnd < 0) resultEnd = str.length();
+        if(resultEnd < 0)
+            resultEnd = str.length();
         return (str.substring(resultStart, resultEnd)).trim();
     }
 }
