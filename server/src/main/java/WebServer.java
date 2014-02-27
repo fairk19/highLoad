@@ -14,7 +14,13 @@ import java.util.TimeZone;
  * Created by Александр on 19.02.14.
  */
 public class WebServer extends Thread{
-    Socket socket;
+
+    private Socket socket;
+    private static final String OK = "HTTP/1.1 200 OK \n";
+    private static final String METHOD_NOT_ALLOWED = "HTTP/1.1 405 Method Not Allowed \n";
+    private static final String NOT_FOUND = "HTTP/1.1 404 Not Found \n";
+    private static final String FORBIDDEN = "HTTP/1.1 403 Forbidden \n";
+    private static final String BAD_REQUEST = "HTTP/1.1 400 Bad Request \n";
 
     public static void main(String args[])
     {
@@ -31,7 +37,9 @@ public class WebServer extends Thread{
             }
         }
         catch(Exception e)
-        {System.out.println("init error: "+e);}
+        {
+            System.out.println("init error: "+e);
+        }
     }
 
     public WebServer(Socket socket)
@@ -54,11 +62,13 @@ public class WebServer extends Thread{
             int readBuf = inputStream.read(buf);
             String request = new String(buf, 0, readBuf);
             String path = getPath(request);
-            System.out.println("PATH:" + path);
-            if(path == null)
+            if(path == METHOD_NOT_ALLOWED || path == BAD_REQUEST)
             {
-                String response = "HTTP/1.1 405 Method Not Allowed\n";
-
+                String response = "";
+                if(path == METHOD_NOT_ALLOWED)
+                    response = METHOD_NOT_ALLOWED;
+                else
+                    response = BAD_REQUEST;
                 DateFormat dateFormat = DateFormat.getTimeInstance();
                 dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
                 response = response + "Date: " + dateFormat.format(new Date()) + "\n";
@@ -75,6 +85,7 @@ public class WebServer extends Thread{
             path = URLDecoder.decode(path, "UTF-8");
             File file = new File(path);
             boolean fileIsExist = file.exists();
+            boolean indexIsExist = true;
 
             if(fileIsExist)
                 if(file.isDirectory())
@@ -85,25 +96,28 @@ public class WebServer extends Thread{
                         path = path + File.separator + "index.html";
                     file = new File(path);
                     fileIsExist = file.exists();
+                    if(!fileIsExist)
+                        indexIsExist = false;
                 }
+
+            //400 Bad Request
 
             if(!fileIsExist)
             {
-                String response;
-                if(file.isDirectory())
-                    response = "HTTP/1.1 403 Forbidden\n";
+                String response = "";
+                if(!indexIsExist)
+                   response = FORBIDDEN;
                 else
-                    response = "HTTP/1.1 404 Not Found\n";
+                    response = NOT_FOUND;
 
                 DateFormat dateFormat = DateFormat.getTimeInstance();
                 dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-                response = response + "Date: " + dateFormat.format(new Date()) + "\n";
-                response = response
-                        + "Content-Type: text/plain\n"
+                response += "Date: " + dateFormat.format(new Date()) + "\n";
+                response += "Content-Type: text/plain\n"
                         + "Connection: close\n"
                         + "Server: WEBServer\n";
 
-                response = response + "File " + path + " not found!";
+                response += "File " + path + " not found!";
                 outputStream.write(response.getBytes());
                 socket.close();
                 return;
@@ -136,18 +150,16 @@ public class WebServer extends Thread{
 
             }
 
-            String response = "HTTP/1.1 200 OK\n";
+            String response = OK;
             DateFormat dateFormat = DateFormat.getTimeInstance();
             dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-            response = response + "Date: " + dateFormat.format(new Date()) + "\n";
-            response = response + "Last-Modified: " + dateFormat.format(new Date(file.lastModified())) + "\n";
-            response = response + "Content-Length: " + file.length() + "\n";
-            response = response + "Content-Type: " + mime + "\n";
-            response = response
-                    + "Connection: close\n"
+            response += "Date: " + dateFormat.format(new Date()) + "\n";
+            response += "Last-Modified: " + dateFormat.format(new Date(file.lastModified())) + "\n";
+            response += "Content-Length: " + file.length() + "\n";
+            response += "Content-Type: " + mime + "\n";
+            response += "Connection: close\n"
                     + "Server: WEBServer\n\n";
             outputStream.write(response.getBytes());
-
             String isHead = extract(request, "HEAD ", " ");
             if(isHead == null)
             {
@@ -163,7 +175,9 @@ public class WebServer extends Thread{
             socket.close();
         }
         catch(Exception e)
-        {e.printStackTrace();}
+        {
+            e.printStackTrace();
+        }
     }
 
     private String getPath(String header)
@@ -183,9 +197,12 @@ public class WebServer extends Thread{
             URI = URIHead;
         }
         else
-            return null;
+            return METHOD_NOT_ALLOWED;
 
         path.toLowerCase();
+        String outPutDirectory = File.separator + ".." + File.separator;
+        if(path.indexOf(outPutDirectory) > 0)
+            return BAD_REQUEST;
         if(path.indexOf("http://", 0) == 0)
         {
             URI = URI.substring(7);
@@ -209,9 +226,9 @@ public class WebServer extends Thread{
         {
             a = URI.charAt(i);
             if(a == '/')
-                path = path + File.separator;
+                path += File.separator;
             else
-                path = path + a;
+                path += a;
         }
         return path;
     }

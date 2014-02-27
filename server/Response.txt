@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Date: 10:02:12
+Last-Modified: 14:49:16
+Content-Length: 1875
+Content-Type: text/plain
+Connection: close
+Server: WEBServer
+
