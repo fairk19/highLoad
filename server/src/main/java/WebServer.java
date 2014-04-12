@@ -1,26 +1,27 @@
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 /**
  * Created by Александр on 19.02.14.
  */
-public class WebServer extends Thread{
+
+public class WebServer extends Thread {
 
     private Socket socket;
-    private static final String OK = "HTTP/1.1 200 OK \n";
-    private static final String METHOD_NOT_ALLOWED = "HTTP/1.1 405 Method Not Allowed \n";
-    private static final String NOT_FOUND = "HTTP/1.1 404 Not Found \n";
-    private static final String FORBIDDEN = "HTTP/1.1 403 Forbidden \n";
-    private static final String BAD_REQUEST = "HTTP/1.1 400 Bad Request \n";
+    private static final String OK = "HTTP/1.1 200 OK\r\n";
+    private static final String METHOD_NOT_ALLOWED = "HTTP/1.1 405 Method Not Allowed\r\n";
+    private static final String NOT_FOUND = "HTTP/1.1 404 Not Found\r\n";
+    private static final String FORBIDDEN = "HTTP/1.1 403 Forbidden\r\n";
+    private static final String BAD_REQUEST = "HTTP/1.1 400 Bad Request\r\n";
 
     public static void main(String args[])
     {
@@ -28,8 +29,7 @@ public class WebServer extends Thread{
         {
             ServerSocket server = new ServerSocket(80, 0,
                     InetAddress.getByName("localhost"));
-
-            System.out.println("server is started");
+            System.out.println("server is started\n");
 
             while(true)
             {
@@ -45,23 +45,45 @@ public class WebServer extends Thread{
     public WebServer(Socket socket)
     {
         this.socket = socket;
-
         setDaemon(true);
         setPriority(NORM_PRIORITY);
         start();
+    }
+
+    String getServerTime() {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat dateFormat = new SimpleDateFormat(
+                "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return dateFormat.format(calendar.getTime());
+    }
+
+    String getDateLastModifiedFile(File file) {
+        SimpleDateFormat lastModified = new SimpleDateFormat( "EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+        lastModified.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return lastModified.format(file.lastModified());
     }
 
     public void run()
     {
         try
         {
+
             InputStream inputStream = socket.getInputStream();
             OutputStream outputStream = socket.getOutputStream();
 
             byte buf[] = new byte[64*1024];
             int readBuf = inputStream.read(buf);
+
+            if(readBuf < 0)
+            {
+                socket.close();
+                return;
+            }
+
             String request = new String(buf, 0, readBuf);
             String path = getPath(request);
+
             if(path == METHOD_NOT_ALLOWED || path == BAD_REQUEST)
             {
                 String response = "";
@@ -69,14 +91,9 @@ public class WebServer extends Thread{
                     response = METHOD_NOT_ALLOWED;
                 else
                     response = BAD_REQUEST;
-                DateFormat dateFormat = DateFormat.getTimeInstance();
-                dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-                response = response + "Date: " + dateFormat.format(new Date()) + "\n";
 
-                response = response
-                        + "Connection: close\n"
-                        + "Server: WEBServer\n";
-
+                response += "Date: " + getServerTime() + "\r\n";
+                response += "Connection: close\r\n" + "Server: WEBServer\r\n\r\n";
                 outputStream.write(response.getBytes());
                 socket.close();
                 return;
@@ -100,8 +117,6 @@ public class WebServer extends Thread{
                         indexIsExist = false;
                 }
 
-            //400 Bad Request
-
             if(!fileIsExist)
             {
                 String response = "";
@@ -110,12 +125,10 @@ public class WebServer extends Thread{
                 else
                     response = NOT_FOUND;
 
-                DateFormat dateFormat = DateFormat.getTimeInstance();
-                dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-                response += "Date: " + dateFormat.format(new Date()) + "\n";
-                response += "Content-Type: text/plain\n"
-                        + "Connection: close\n"
-                        + "Server: WEBServer\n";
+                response += "Date: " + getServerTime() + "\r\n";
+                response += "Content-Type: text/plain\r\n"
+                        + "Connection: close\r\n"
+                        + "Server: WEBServer\r\n\r\n";
 
                 response += "File " + path + " not found!";
                 outputStream.write(response.getBytes());
@@ -147,20 +160,18 @@ public class WebServer extends Thread{
                     mime = "image/png";
                 else if(ext.equalsIgnoreCase(".swf"))
                     mime = "application/x-shockwave-flash";
-
             }
 
             String response = OK;
-            DateFormat dateFormat = DateFormat.getTimeInstance();
-            dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-            response += "Date: " + dateFormat.format(new Date()) + "\n";
-            response += "Last-Modified: " + dateFormat.format(new Date(file.lastModified())) + "\n";
-            response += "Content-Length: " + file.length() + "\n";
-            response += "Content-Type: " + mime + "\n";
-            response += "Connection: close\n"
-                    + "Server: WEBServer\n\n";
+            response += "Date: " + getServerTime() + "\r\n";
+            response += "Last-Modified: " + getDateLastModifiedFile(file) + "\r\n";
+            response += "Content-Length: " + file.length() + "\r\n";
+            response += "Content-Type: " + mime + "\r\n";
+            response += "Connection: close\r\n"
+                    + "Server: WEBServer\r\n\r\n";
             outputStream.write(response.getBytes());
             String isHead = extract(request, "HEAD ", " ");
+
             if(isHead == null)
             {
                 FileInputStream fileInputStream = new FileInputStream(path);
@@ -182,8 +193,8 @@ public class WebServer extends Thread{
 
     private String getPath(String header)
     {
-        String URIGet = extract(header, "GET ", " HTTP/1.1");
-        String URIHead = extract(header, "HEAD ", " HTTP/1.1");
+        String URIGet = extract(header, "GET ", " HTTP");
+        String URIHead = extract(header, "HEAD ", " HTTP");
         String path, URI;
         if(URIGet != null)
         {
@@ -235,7 +246,7 @@ public class WebServer extends Thread{
 
     private String extract(String str, String start, String end)
     {
-        int resultStart = str.indexOf("\n\n", 0), resultEnd;
+        int resultStart = str.indexOf("\r\n\r\n", 0), resultEnd;
         if(resultStart < 0)
             resultStart = str.indexOf("\r\n\r\n", 0);
         if(resultStart > 0)
