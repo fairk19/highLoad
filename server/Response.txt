@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-Date: Sat, 15 Mar 2014 10:15:36 GMT
-Last-Modified: Sat, 22 Feb 2014 08:29:49 GMT
-Content-Length: 38
-Content-Type: text/html
-Connection: close
-Server: WEBServer
-
-<html><body>Page Sample</body></html>
